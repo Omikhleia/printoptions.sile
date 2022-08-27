@@ -1,4 +1,4 @@
-# barcodes.sile
+# printoptions.sile
 
 [![license](https://img.shields.io/github/license/Omikhleia/printoptions.sile)](LICENSE)
 [![Luacheck](https://img.shields.io/github/workflow/status/Omikhleia/printoptions.sile/Luacheck?label=Luacheck&logo=Lua)](https://github.com/Omikhleia/printoptions.sile/actions?workflow=Luacheck)
@@ -8,16 +8,21 @@ This package for the [SILE](https://github.com/sile-typesetter/sile) typesetting
 system helps tuning image resolution and vector rasterization, as often requested by
 professional printers and print-on-demand services.
 
-The package requires Inkscape and GraphicMagick to be available on your system, and
-uses them to convert vector files to rasters and to downsize, if need be, raster
-images to the targeted resolution. If they are not available, everything goes as
-usual, without conversion.
+The package requires Inkscape, GraphicMagick and Ghostscript to be available
+on your system, and uses them to convert vector files to rasters and to downsize,
+if need be, raster images to the targeted resolution.
+If they are not available, everything goes as usual, without conversion.
 
-Most professional printers require the whole PDF to be flattened without transparency,
+Some professional printers require the whole PDF to be flattened without transparency,
 which is not addressed here. There are other tools, better suited to that task, which
-may be used once you have a PDF document. This package aims at something simpler,
-would you want to reduce the resolution (for proofreaders and reviewers) for a smaller
-PDF, or to ensure, even for print quality, that images are not indecently oversized.
+may be used once you have a final PDF document. Most of the time, it results, however,
+in a much heavier PDF (in terms of size), as pages may have to be fully rasterized
+to remove any layering and compute flattened transparencies.
+
+This package aims at something simpler, would you want to reduce the resolution
+(for proofreaders and reviewers) for a smaller PDF; or to ensure, even for print quality,
+that images are not indecently oversized and the rasterized vectors still look good
+and properly ordered on the page.
 
 ## Installation
 
