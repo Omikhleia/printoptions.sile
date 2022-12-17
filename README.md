@@ -1,7 +1,7 @@
 # printoptions.sile
 
-[![license](https://img.shields.io/github/license/Omikhleia/printoptions.sile)](LICENSE)
-[![Luacheck](https://img.shields.io/github/workflow/status/Omikhleia/printoptions.sile/Luacheck?label=Luacheck&logo=Lua)](https://github.com/Omikhleia/printoptions.sile/actions?workflow=Luacheck)
+[![license](https://img.shields.io/github/license/Omikhleia/printoptions.sile?label=License)](LICENSE)
+[![Luacheck](https://img.shields.io/github/actions/workflow/status/Omikhleia/printoptions.sile/luacheck.yml?branch=main&label=Luacheck&logo=Lua)](https://github.com/Omikhleia/printoptions.sile/actions?workflow=Luacheck)
 [![Luarocks](https://img.shields.io/luarocks/v/Omikhleia/printoptions.sile?label=Luarocks&logo=Lua)](https://luarocks.org/modules/Omikhleia/printoptions.sile)
 
 This package for the [SILE](https://github.com/sile-typesetter/sile) typesetting
