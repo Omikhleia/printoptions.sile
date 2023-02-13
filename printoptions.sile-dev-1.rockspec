@@ -1,7 +1,7 @@
 package = "printoptions.sile"
 version = "dev-1"
 source = {
-  url = "git://github.com/Omikhleia/printoptions.sile.git",
+  url = "git+https://github.com/Omikhleia/printoptions.sile.git",
 }
 description = {
   summary = "Image tools for professional printers with the SILE typesetting system.",
