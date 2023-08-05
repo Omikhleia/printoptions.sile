@@ -8,7 +8,7 @@ This package for the [SILE](https://github.com/sile-typesetter/sile) typesetting
 system helps tuning image resolution and vector rasterization, as often requested by
 professional printers and print-on-demand services.
 
-The package requires Inkscape, GraphicMagick and Ghostscript to be available
+The package requires Inkscape, GraphicsMagick and Ghostscript to be available
 on your system, and uses them to convert vector files to rasters and to downsize,
 if need be, raster images to the targeted resolution.
 If they are not available, everything goes as usual, without conversion.
@@ -30,14 +30,13 @@ These packages require SILE v0.14 or upper.
 
 Installation relies on the **luarocks** package manager.
 
-To install the latest development version, you may use the provided “rockspec”:
+To install the latest version, you may use the provided “rockspec”:
 
 ```
-luarocks --lua-version 5.4 install --server=https://luarocks.org/dev printoptions.sile
+luarocks install -printoptions.sile
 ```
 
-(Adapt to your version of Lua, if need be, and refer to the SILE manual for more
-detailed 3rd-party package installation information.)
+(Refer to the SILE manual for more detailed 3rd-party package installation information.)
 
 ## Usage
 

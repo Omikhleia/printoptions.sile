@@ -262,7 +262,7 @@ Converted images are all placed in a \code{converted} folder besides
 the master file. Be cautious not having images with the same base filename
 in different folders, to avoid conflicts!
 
-The package requires Inkscape, GraphicMagick and Ghostscript to be available
+The package requires Inkscape, GraphicsMagick and Ghostscript to be available
 on your system.
 
 Moreover, if the \autodoc:setting{printoptions.image.flatten} setting is
