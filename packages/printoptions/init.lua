@@ -32,6 +32,13 @@ function package.declareSettings (_)
     default = false,
     help = "When true and resolution is set, images are flattened (transparency removed)."
   })
+
+  SILE.settings:declare({
+    parameter = "printoptions.image.grayscale",
+    type = "boolean",
+    default = true,
+    help = "When true and resolution is set, images are converted to grayscale."
+  })
 end
 
 local function handlePath (filename)
@@ -52,6 +59,7 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
   local sourceFilename = filename
   local basename, ext = handlePath(filename)
   local flatten = SILE.settings:get("printoptions.image.flatten")
+  local grayscale = SILE.settings:get("printoptions.image.grayscale")
 
   if pageno then
     -- Use specified page if provided (e.g. for PDF).
@@ -77,10 +85,8 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
     return targetFilename
   end
 
-  local command
-  if flatten then
-    command = table.concat({
-      "gm convert",
+  local command = {
+    "gm convert",
       sourceFilename ,
       "-units PixelsPerInch",
       -- disable antialiasing (best effort)
@@ -89,28 +95,22 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
       -- resize
       "-resize "..widthInPx.."x\\>",
       "-density "..resolution,
+  }
+  if flatten then
+    pl.tablex.insertvalues(command, {
       -- make grayscale + flattened
       "-background white",
       "-flatten",
-      "-colorspace GRAY",
-      targetFilename,
-    }, " ")
-  else
-    command = table.concat({
-      "gm convert",
-      sourceFilename,
-      "-units PixelsPerInch",
-      -- disable antialiasing (best effort)
-      "+antialias",
-      "-filter point",
-      -- resize
-      "-resize "..widthInPx.."x\\>",
-      "-density "..resolution,
-      -- make grayscale
-      "-colorspace GRAY",
-      targetFilename,
-    }, " ")
+    })
   end
+  if grayscale then
+    pl.tablex.insertvalues(command, {
+      "-colorspace GRAY",
+    })
+  end
+  command[#command + 1] = targetFilename
+  command = table.concat(command, " ")
+
   SU.debug("printoptions", "Command: "..command)
   local result = os.execute(command)
   if type(result) ~= "boolean" then result = (result == 0) end
@@ -251,7 +251,10 @@ value, defines the expected image resolution in dpi (dots per inch).
 It could be set to 300 or 600 for final offset print or, say, to 150
 or lower for a low-resolution PDF for reviewers and proofreaders.
 Images are resampled to the target resolution (if they have
-a higher resolution) and are converted to grayscale.
+a higher resolution).
+
+If the \autodoc:setting{printoptions.image.grayscale} setting is true (its default value),
+images are also converted to grayscale.
 
 The \autodoc:setting{printoptions.vector.rasterize} setting defaults to true.
 If a target image resolution is defined and this setting is left enabled,
