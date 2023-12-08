@@ -16,7 +16,7 @@ function package.declareSettings (_)
     parameter = "printoptions.resolution",
     type = "integer or nil",
     default = nil,
-    help = "If set, defines the target image resolution in dpi (dots per inch)"
+    help = "If set, defines the target image resolution in DPI (dots per inch)"
   })
 
   SILE.settings:declare({
@@ -31,6 +31,20 @@ function package.declareSettings (_)
     type = "boolean",
     default = false,
     help = "When true and resolution is set, images are flattened (transparency removed)."
+  })
+
+  SILE.settings:declare({
+    parameter = "printoptions.image.grayscale",
+    type = "boolean",
+    default = true,
+    help = "When true and resolution is set, images are converted to grayscale."
+  })
+
+  SILE.settings:declare({
+    parameter = "printoptions.image.tolerance",
+    type = "number",
+    default = 0.85,
+    help = "Warning threshold for under-resolved images (percentage)."
   })
 end
 
@@ -52,6 +66,21 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
   local sourceFilename = filename
   local basename, ext = handlePath(filename)
   local flatten = SILE.settings:get("printoptions.image.flatten")
+  local grayscale = SILE.settings:get("printoptions.image.grayscale")
+
+  local width, _, xres = SILE.outputter:getImageSize(sourceFilename, pageno or 1)
+  local actualWidthInPx = width * xres / 72
+  if actualWidthInPx <= widthInPx then
+    -- No need to resample, the image is already smaller than the target width.
+    local actualResolution = math.floor(actualWidthInPx * resolution / widthInPx)
+    SU.debug("printoptions", "No resampling needed for", filename,
+      actualWidthInPx.."px", "for target", widthInPx.."px")
+    local threshold = SILE.settings:get("printoptions.image.tolerance")
+    if actualResolution <= threshold * resolution then
+      SU.warn("Image " .. filename .. " has a low resolution (" .. actualResolution .. " DPI)")
+    end
+    return sourceFilename
+  end
 
   if pageno then
     -- Use specified page if provided (e.g. for PDF).
@@ -77,10 +106,8 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
     return targetFilename
   end
 
-  local command
-  if flatten then
-    command = table.concat({
-      "gm convert",
+  local command = {
+    "gm convert",
       sourceFilename ,
       "-units PixelsPerInch",
       -- disable antialiasing (best effort)
@@ -89,28 +116,22 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
       -- resize
       "-resize "..widthInPx.."x\\>",
       "-density "..resolution,
+  }
+  if flatten then
+    pl.tablex.insertvalues(command, {
       -- make grayscale + flattened
       "-background white",
       "-flatten",
-      "-colorspace GRAY",
-      targetFilename,
-    }, " ")
-  else
-    command = table.concat({
-      "gm convert",
-      sourceFilename,
-      "-units PixelsPerInch",
-      -- disable antialiasing (best effort)
-      "+antialias",
-      "-filter point",
-      -- resize
-      "-resize "..widthInPx.."x\\>",
-      "-density "..resolution,
-      -- make grayscale
-      "-colorspace GRAY",
-      targetFilename,
-    }, " ")
+    })
   end
+  if grayscale then
+    pl.tablex.insertvalues(command, {
+      "-colorspace GRAY",
+    })
+  end
+  command[#command + 1] = targetFilename
+  command = table.concat(command, " ")
+
   SU.debug("printoptions", "Command: "..command)
   local result = os.execute(command)
   if type(result) ~= "boolean" then result = (result == 0) end
@@ -247,11 +268,18 @@ image resolution and vector rasterization, as often requested by
 professional printers and print-on-demand services.
 
 The \autodoc:setting{printoptions.resolution} setting, when set to an integer
-value, defines the expected image resolution in dpi (dots per inch).
+value, defines the expected image resolution in DPI (dots per inch).
 It could be set to 300 or 600 for final offset print or, say, to 150
 or lower for a low-resolution PDF for reviewers and proofreaders.
 Images are resampled to the target resolution (if they have
-a higher resolution) and are converted to grayscale.
+a higher resolution).
+
+If the \autodoc:setting{printoptions.image.grayscale} setting is true (its default value),
+resampled images are also converted to grayscale.
+
+Under-resolved images are reported as warnings, if their resolution is
+below a threshold defined by the \autodoc:setting{printoptions.image.tolerance}
+(defaulting to 0.85, i.e. 85\% of the target resolution).
 
 The \autodoc:setting{printoptions.vector.rasterize} setting defaults to true.
 If a target image resolution is defined and this setting is left enabled,
