@@ -6,6 +6,8 @@
 -- Reminders: GraphicsMagick also needs Ghostscript for PDF images (it
 -- delegates to it).
 --
+require("silex.types") -- Compatibility shims
+
 local base = require("packages.base")
 
 local package = pl.class(base)
@@ -179,8 +181,8 @@ local drawSVG = function (filename, svgdata, width, height, density)
   elseif height then
     scalefactor = height:tonumber() / svgheight
   end
-  width = SILE.measurement(svgwidth * scalefactor)
-  height = SILE.measurement(svgheight * scalefactor)
+  width = SILE.types.measurement(svgwidth * scalefactor)
+  height = SILE.types.measurement(svgheight * scalefactor)
   scalefactor = scalefactor * density / 72
 
   local resolution = SILE.settings:get("printoptions.resolution")
