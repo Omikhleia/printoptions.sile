@@ -1,6 +1,6 @@
 --
 -- Print options for professional printers
--- 2022, Didier Willis
+-- 2022-2024, Didier Willis
 -- License: MIT
 -- Requires: Inkscape and GraphicsMagick to be available on the host system.
 -- Reminders: GraphicsMagick also needs Ghostscript for PDF images (it
@@ -65,15 +65,17 @@ local function handlePath (filename)
 end
 
 local function imageResolutionConverter (filename, widthInPx, resolution, pageno)
-  local sourceFilename = filename
   local basename, ext = handlePath(filename)
   local flatten = SILE.settings:get("printoptions.image.flatten")
   local grayscale = SILE.settings:get("printoptions.image.grayscale")
 
-  local width, _, xres = SILE.outputter:getImageSize(sourceFilename, pageno or 1)
+  local rescale = true
+  local width, _, xres = SILE.outputter:getImageSize(filename, pageno or 1)
   local actualWidthInPx = width * xres / 72
   if actualWidthInPx <= widthInPx then
-    -- No need to resample, the image is already smaller than the target width.
+    -- The image is already smaller than the target width.
+    rescale = false
+    -- Warn if the resolution is too low.
     local actualResolution = math.floor(actualWidthInPx * resolution / widthInPx)
     SU.debug("printoptions", "No resampling needed for", filename,
       actualWidthInPx.."px", "for target", widthInPx.."px")
@@ -81,12 +83,18 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
     if actualResolution <= threshold * resolution then
       SU.warn("Image " .. filename .. " has a low resolution (" .. actualResolution .. " DPI)")
     end
-    return sourceFilename
   end
 
+  if not (rescale or flatten or grayscale) then
+    -- No need to convert the image.
+    SU.debug("printoptions", "No conversion needed for", filename)
+    return filename
+  end
+
+  local source = filename
   if pageno then
     -- Use specified page if provided (e.g. for PDF).
-    sourceFilename = filename .. "[" .. (pageno - 1) .. "]" -- Graphicsmagick page numbers start at 0.
+    source = filename .. "[" .. (pageno - 1) .. "]" -- Graphicsmagick page numbers start at 0.
     basename = pageno and basename .. "-p" .. pageno
   end
 
@@ -94,34 +102,40 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
   if flatten then
     targetFilename = targetFilename .. "-flat"
   end
+  if grayscale then
+    targetFilename = targetFilename .. "-gray"
+  end
   targetFilename = targetFilename .. ext
 
   local sourceTime = pl.path.getmtime(filename)
   if sourceTime == nil then
-    SU.debug("printoptions", "Source file not found "..filename)
+    SU.debug("printoptions", "Source file not found", filename)
     return nil
   end
 
   local targetTime = pl.path.getmtime(targetFilename)
   if targetTime ~= nil and targetTime > sourceTime then
-    SU.debug("printoptions", "Source file already converted "..filename)
+    SU.debug("printoptions", "Source file already converted", filename, "=", targetFilename)
     return targetFilename
   end
 
   local command = {
     "gm convert",
-      sourceFilename ,
+      source ,
       "-units PixelsPerInch",
       -- disable antialiasing (best effort)
       "+antialias",
       "-filter point",
+  }
+  if rescale then
+    pl.tablex.insertvalues(command, {
       -- resize
       "-resize "..widthInPx.."x\\>",
       "-density "..resolution,
-  }
+    })
+  end
   if flatten then
     pl.tablex.insertvalues(command, {
-      -- make grayscale + flattened
       "-background white",
       "-flatten",
     })
@@ -134,11 +148,11 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
   command[#command + 1] = targetFilename
   command = table.concat(command, " ")
 
-  SU.debug("printoptions", "Command: "..command)
+  SU.debug("printoptions", "Command:", command)
   local result = os.execute(command)
   if type(result) ~= "boolean" then result = (result == 0) end
   if result then
-    SU.debug("printoptions", "Converted "..filename.." to "..targetFilename)
+    SU.debug("printoptions", "Converted", filename, "to", targetFilename)
     return targetFilename
   else
     return nil
@@ -153,13 +167,13 @@ local function svgRasterizer (filename, widthInPx, _)
 
   local sourceTime = pl.path.getmtime(filename)
   if sourceTime == nil then
-    SU.debug("printoptions", "Source file not found "..filename)
+    SU.debug("printoptions", "Source file not found", filename)
     return nil
   end
 
   local targetTime = pl.path.getmtime(targetFilename)
   if targetTime ~= nil and targetTime > sourceTime then
-    SU.debug("printoptions", "Source file already converted "..filename)
+    SU.debug("printoptions", "Source file already converted", filename)
     return targetFilename
   end
 
@@ -179,7 +193,7 @@ local function svgRasterizer (filename, widthInPx, _)
   local result = os.execute(toSvg)
   if type(result) ~= "boolean" then result = (result == 0) end
   if result then
-    SU.debug("printoptions", "Converted "..filename.." to "..targetFilename)
+    SU.debug("printoptions", "Converted ", filename, "to", targetFilename)
     return targetFilename
   else
     return nil
@@ -251,7 +265,7 @@ function package:_init (pkgoptions)
   SILE.outputter.drawImage = function (outputterSelf, filename, x, y, width, height, pageno)
     local resolution = SILE.settings:get("printoptions.resolution")
     if resolution and resolution > 0 then
-      SU.debug("printoptions", "Conversion to "..resolution.. " DPI for "..filename)
+      SU.debug("printoptions", "Conversion to", resolution, "DPI for", filename)
       local targetWidthInPx = math.ceil(SU.cast("number", width) * resolution / 72)
       local converted = imageResolutionConverter(filename, targetWidthInPx, resolution, pageno)
       if converted then
