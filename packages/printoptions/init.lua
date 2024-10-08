@@ -279,45 +279,30 @@ function package:_init (pkgoptions)
 end
 
 package.documentation = [[\begin{document}
-The \autodoc:package{printoptions} package provides a few settings that allow tuning
-image resolution and vector rasterization, as often requested by
-professional printers and print-on-demand services.
+The \autodoc:package{printoptions} package provides a few settings that allow tuning image resolution and vector rasterization, as often requested by professional printers and print-on-demand services.
 
-The \autodoc:setting{printoptions.resolution} setting, when set to an integer
-value, defines the expected image resolution in DPI (dots per inch).
-It could be set to 300 or 600 for final offset print or, say, to 150
-or lower for a low-resolution PDF for reviewers and proofreaders.
-Images are resampled to the target resolution (if they have
-a higher resolution).
+The \autodoc:setting{printoptions.resolution} setting, when set to an integer value, defines the expected image resolution in DPI (dots per inch).
+It could be set to 300 or 600 for final offset print or, say, to 150 or lower for a low-resolution PDF for reviewers and proofreaders.
+Images are resampled to the target resolution (if they have a higher resolution).
 
-If the \autodoc:setting{printoptions.image.grayscale} setting is true (its default value),
-resampled images are also converted to grayscale.
+If the \autodoc:setting{printoptions.image.grayscale} setting is true (its default value), resampled images are also converted to grayscale.
 
-Under-resolved images are reported as warnings, if their resolution is
-below a threshold defined by the \autodoc:setting{printoptions.image.tolerance}
-(defaulting to 0.85, i.e. 85\% of the target resolution).
+Under-resolved images are reported as warnings, if their resolution is below a threshold defined by the \autodoc:setting{printoptions.image.tolerance} (defaulting to 0.85, i.e. 85\% of the target resolution).
 
 The \autodoc:setting{printoptions.vector.rasterize} setting defaults to true.
-If a target image resolution is defined and this setting is left enabled,
-then vector images are rasterized. It currently applies to SVG files,
-redefining the \autodoc:command[check=false]{\svg} command.
+If a target image resolution is defined and this setting is left enabled, then vector images are rasterized.
+It currently applies to SVG files, redefining the \autodoc:command[check=false]{\svg} command.
 
-Converted images are all placed in a \code{converted} folder besides
-the master file. Be cautious not having images with the same base filename
-in different folders, to avoid conflicts!
+Converted images are all placed in a \code{converted} folder besides the master file.
+Be cautious not having images with the same base filename in different folders, to avoid conflicts!
 
-The package requires Inkscape, GraphicsMagick and Ghostscript to be available
-on your system.
+The package requires Inkscape, GraphicsMagick and Ghostscript to be available on your system.
+As with anything that relies on invoking external programs on your host system, please be aware of potential security concerns.
+Be very cautious with the source of the elements you include in your documents!
 
-Moreover, if the \autodoc:setting{printoptions.image.flatten} setting is
-turned to true (its default being false), not only images are resampled,
-but they are also flattened with a white background. You probably do not
-want to enable this setting for production, but it might be handy for
-checking things before going to print.
-(Most professional printers require the whole PDF to be flattened without
-transparency, which is not addressed here; but the assumption is that you might
-check what could happen if transparency is improperly managed by your printer
-and/or you have layered contents incorrectly ordered.)
+Moreover, if the \autodoc:setting{printoptions.image.flatten} setting is turned to true (its default being false), not only images are resampled, but they are also flattened with a white background.
+You probably do not want to enable this setting for production, but it might be handy for checking things before going to print.
+(Most professional printers require the whole PDF to be flattened without transparency, which is not addressed here; but the assumption is that you might check what could happen if transparency is improperly managed by your printer and/or you have layered contents incorrectly ordered.)
 \end{document}]]
 
 return package
