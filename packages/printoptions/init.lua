@@ -1,6 +1,6 @@
 --
 -- Print options for professional printers
--- 2022, Didier Willis
+-- 2022-2024, Didier Willis
 -- License: MIT
 -- Requires: Inkscape and GraphicsMagick to be available on the host system.
 -- Reminders: GraphicsMagick also needs Ghostscript for PDF images (it
@@ -18,7 +18,7 @@ function package.declareSettings (_)
     parameter = "printoptions.resolution",
     type = "integer or nil",
     default = nil,
-    help = "If set, defines the target image resolution in dpi (dots per inch)"
+    help = "If set, defines the target image resolution in DPI (dots per inch)"
   })
 
   SILE.settings:declare({
@@ -33,6 +33,20 @@ function package.declareSettings (_)
     type = "boolean",
     default = false,
     help = "When true and resolution is set, images are flattened (transparency removed)."
+  })
+
+  SILE.settings:declare({
+    parameter = "printoptions.image.grayscale",
+    type = "boolean",
+    default = true,
+    help = "When true and resolution is set, images are converted to grayscale."
+  })
+
+  SILE.settings:declare({
+    parameter = "printoptions.image.tolerance",
+    type = "number",
+    default = 0.85,
+    help = "Warning threshold for under-resolved images (percentage)."
   })
 end
 
@@ -51,13 +65,36 @@ local function handlePath (filename)
 end
 
 local function imageResolutionConverter (filename, widthInPx, resolution, pageno)
-  local sourceFilename = filename
   local basename, ext = handlePath(filename)
   local flatten = SILE.settings:get("printoptions.image.flatten")
+  local grayscale = SILE.settings:get("printoptions.image.grayscale")
 
+  local rescale = true
+  local width, _, xres = SILE.outputter:getImageSize(filename, pageno or 1)
+  local actualWidthInPx = width * xres / 72
+  if actualWidthInPx <= widthInPx then
+    -- The image is already smaller than the target width.
+    rescale = false
+    -- Warn if the resolution is too low.
+    local actualResolution = math.floor(actualWidthInPx * resolution / widthInPx)
+    SU.debug("printoptions", "No resampling needed for", filename,
+      actualWidthInPx.."px", "for target", widthInPx.."px")
+    local threshold = SILE.settings:get("printoptions.image.tolerance")
+    if actualResolution <= threshold * resolution then
+      SU.warn("Image " .. filename .. " has a low resolution (" .. actualResolution .. " DPI)")
+    end
+  end
+
+  if not (rescale or flatten or grayscale) then
+    -- No need to convert the image.
+    SU.debug("printoptions", "No conversion needed for", filename)
+    return filename
+  end
+
+  local source = filename
   if pageno then
     -- Use specified page if provided (e.g. for PDF).
-    sourceFilename = filename .. "[" .. (pageno - 1) .. "]" -- Graphicsmagick page numbers start at 0.
+    source = filename .. "[" .. (pageno - 1) .. "]" -- Graphicsmagick page numbers start at 0.
     basename = pageno and basename .. "-p" .. pageno
   end
 
@@ -65,59 +102,57 @@ local function imageResolutionConverter (filename, widthInPx, resolution, pageno
   if flatten then
     targetFilename = targetFilename .. "-flat"
   end
+  if grayscale then
+    targetFilename = targetFilename .. "-gray"
+  end
   targetFilename = targetFilename .. ext
 
   local sourceTime = pl.path.getmtime(filename)
   if sourceTime == nil then
-    SU.debug("printoptions", "Source file not found "..filename)
+    SU.debug("printoptions", "Source file not found", filename)
     return nil
   end
 
   local targetTime = pl.path.getmtime(targetFilename)
   if targetTime ~= nil and targetTime > sourceTime then
-    SU.debug("printoptions", "Source file already converted "..filename)
+    SU.debug("printoptions", "Source file already converted", filename, "=", targetFilename)
     return targetFilename
   end
 
-  local command
-  if flatten then
-    command = table.concat({
-      "gm convert",
-      sourceFilename ,
+  local command = {
+    "gm convert",
+      source ,
       "-units PixelsPerInch",
       -- disable antialiasing (best effort)
       "+antialias",
       "-filter point",
+  }
+  if rescale then
+    pl.tablex.insertvalues(command, {
       -- resize
       "-resize "..widthInPx.."x\\>",
       "-density "..resolution,
-      -- make grayscale + flattened
+    })
+  end
+  if flatten then
+    pl.tablex.insertvalues(command, {
       "-background white",
       "-flatten",
-      "-colorspace GRAY",
-      targetFilename,
-    }, " ")
-  else
-    command = table.concat({
-      "gm convert",
-      sourceFilename,
-      "-units PixelsPerInch",
-      -- disable antialiasing (best effort)
-      "+antialias",
-      "-filter point",
-      -- resize
-      "-resize "..widthInPx.."x\\>",
-      "-density "..resolution,
-      -- make grayscale
-      "-colorspace GRAY",
-      targetFilename,
-    }, " ")
+    })
   end
-  SU.debug("printoptions", "Command: "..command)
+  if grayscale then
+    pl.tablex.insertvalues(command, {
+      "-colorspace GRAY",
+    })
+  end
+  command[#command + 1] = targetFilename
+  command = table.concat(command, " ")
+
+  SU.debug("printoptions", "Command:", command)
   local result = os.execute(command)
   if type(result) ~= "boolean" then result = (result == 0) end
   if result then
-    SU.debug("printoptions", "Converted "..filename.." to "..targetFilename)
+    SU.debug("printoptions", "Converted", filename, "to", targetFilename)
     return targetFilename
   else
     return nil
@@ -132,13 +167,13 @@ local function svgRasterizer (filename, widthInPx, _)
 
   local sourceTime = pl.path.getmtime(filename)
   if sourceTime == nil then
-    SU.debug("printoptions", "Source file not found "..filename)
+    SU.debug("printoptions", "Source file not found", filename)
     return nil
   end
 
   local targetTime = pl.path.getmtime(targetFilename)
   if targetTime ~= nil and targetTime > sourceTime then
-    SU.debug("printoptions", "Source file already converted "..filename)
+    SU.debug("printoptions", "Source file already converted", filename)
     return targetFilename
   end
 
@@ -158,7 +193,7 @@ local function svgRasterizer (filename, widthInPx, _)
   local result = os.execute(toSvg)
   if type(result) ~= "boolean" then result = (result == 0) end
   if result then
-    SU.debug("printoptions", "Converted "..filename.." to "..targetFilename)
+    SU.debug("printoptions", "Converted ", filename, "to", targetFilename)
     return targetFilename
   else
     return nil
@@ -230,7 +265,7 @@ function package:_init (pkgoptions)
   SILE.outputter.drawImage = function (outputterSelf, filename, x, y, width, height, pageno)
     local resolution = SILE.settings:get("printoptions.resolution")
     if resolution and resolution > 0 then
-      SU.debug("printoptions", "Conversion to "..resolution.. " DPI for "..filename)
+      SU.debug("printoptions", "Conversion to", resolution, "DPI for", filename)
       local targetWidthInPx = math.ceil(SU.cast("number", width) * resolution / 72)
       local converted = imageResolutionConverter(filename, targetWidthInPx, resolution, pageno)
       if converted then
@@ -244,38 +279,30 @@ function package:_init (pkgoptions)
 end
 
 package.documentation = [[\begin{document}
-The \autodoc:package{printoptions} package provides a few settings that allow tuning
-image resolution and vector rasterization, as often requested by
-professional printers and print-on-demand services.
+The \autodoc:package{printoptions} package provides a few settings that allow tuning image resolution and vector rasterization, as often requested by professional printers and print-on-demand services.
 
-The \autodoc:setting{printoptions.resolution} setting, when set to an integer
-value, defines the expected image resolution in dpi (dots per inch).
-It could be set to 300 or 600 for final offset print or, say, to 150
-or lower for a low-resolution PDF for reviewers and proofreaders.
-Images are resampled to the target resolution (if they have
-a higher resolution) and are converted to grayscale.
+The \autodoc:setting{printoptions.resolution} setting, when set to an integer value, defines the expected image resolution in DPI (dots per inch).
+It could be set to 300 or 600 for final offset print or, say, to 150 or lower for a low-resolution PDF for reviewers and proofreaders.
+Images are resampled to the target resolution (if they have a higher resolution).
+
+If the \autodoc:setting{printoptions.image.grayscale} setting is true (its default value), resampled images are also converted to grayscale.
+
+Under-resolved images are reported as warnings, if their resolution is below a threshold defined by the \autodoc:setting{printoptions.image.tolerance} (defaulting to 0.85, i.e. 85\% of the target resolution).
 
 The \autodoc:setting{printoptions.vector.rasterize} setting defaults to true.
-If a target image resolution is defined and this setting is left enabled,
-then vector images are rasterized. It currently applies to SVG files,
-redefining the \autodoc:command[check=false]{\svg} command.
+If a target image resolution is defined and this setting is left enabled, then vector images are rasterized.
+It currently applies to SVG files, redefining the \autodoc:command[check=false]{\svg} command.
 
-Converted images are all placed in a \code{converted} folder besides
-the master file. Be cautious not having images with the same base filename
-in different folders, to avoid conflicts!
+Converted images are all placed in a \code{converted} folder besides the master file.
+Be cautious not having images with the same base filename in different folders, to avoid conflicts!
 
-The package requires Inkscape, GraphicsMagick and Ghostscript to be available
-on your system.
+The package requires Inkscape, GraphicsMagick and Ghostscript to be available on your system.
+As with anything that relies on invoking external programs on your host system, please be aware of potential security concerns.
+Be very cautious with the source of the elements you include in your documents!
 
-Moreover, if the \autodoc:setting{printoptions.image.flatten} setting is
-turned to true (its default being false), not only images are resampled,
-but they are also flattened with a white background. You probably do not
-want to enable this setting for production, but it might be handy for
-checking things before going to print.
-(Most professional printers require the whole PDF to be flattened without
-transparency, which is not addressed here; but the assumption is that you might
-check what could happen if transparency is improperly managed by your printer
-and/or you have layered contents incorrectly ordered.)
+Moreover, if the \autodoc:setting{printoptions.image.flatten} setting is turned to true (its default being false), not only images are resampled, but they are also flattened with a white background.
+You probably do not want to enable this setting for production, but it might be handy for checking things before going to print.
+(Most professional printers require the whole PDF to be flattened without transparency, which is not addressed here; but the assumption is that you might check what could happen if transparency is improperly managed by your printer and/or you have layered contents incorrectly ordered.)
 \end{document}]]
 
 return package
