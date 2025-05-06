@@ -1,8 +1,13 @@
 # printoptions.sile
 
-[![license](https://img.shields.io/github/license/Omikhleia/printoptions.sile?label=License)](LICENSE)
+[![License](https://img.shields.io/github/license/Omikhleia/printoptions.sile?label=License)](LICENSE)
 [![Luacheck](https://img.shields.io/github/actions/workflow/status/Omikhleia/printoptions.sile/luacheck.yml?branch=main&label=Luacheck&logo=Lua)](https://github.com/Omikhleia/printoptions.sile/actions?workflow=Luacheck)
-[![Luarocks](https://img.shields.io/luarocks/v/Omikhleia/printoptions.sile?label=Luarocks&logo=Lua)](https://luarocks.org/modules/Omikhleia/printoptions.sile)
+
+> [!IMPORTANT]
+> This module is now provided as an integral part of the [resilient.sile](https://github.com/Omikhleia/resilient.sile) collection (release v3).
+> The new implementation is distributed under different license terms.
+>
+> This repository is no longer maintained and will be archived. 
 
 This package for the [SILE](https://github.com/sile-typesetter/sile) typesetting
 system helps tuning image resolution and vector rasterization, as often requested by
