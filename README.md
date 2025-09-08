@@ -5,7 +5,6 @@
 
 > [!IMPORTANT]
 > This module is now provided as an integral part of the [resilient.sile](https://github.com/Omikhleia/resilient.sile) collection (release v3).
-> The new implementation is distributed under different license terms.
 >
 > This repository is no longer maintained and will be archived. 
 
